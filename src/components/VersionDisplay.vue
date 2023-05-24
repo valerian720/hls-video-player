@@ -1,8 +1,8 @@
 <!-- eslint-disable vue/no-parsing-error -->
 <template>
   <div class="row">
-    <div class="row">Version: {{ version }}</div>
-    <div class="col">Build at: {{ buidDateTime }}</div>
+    <div class="">Version: {{ version }}</div>
+    <div class="">Build at: {{ buidDateTime }}</div>
   </div>
 </template>
 

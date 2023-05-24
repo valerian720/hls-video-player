@@ -4,8 +4,10 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
     name: "video",
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/HomeView.vue"),
+    components: {
+      default: () => import("../views/VideoplayerView.vue"),
+      sidePanel: () => import("../views/StatisticsNav.vue"),
+    },
   },
 ];
 
