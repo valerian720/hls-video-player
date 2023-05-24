@@ -7,8 +7,8 @@
       <input
         class="form-control form-control-dark w-50"
         type="text"
-        placeholder="Ссылка на поток"
-        aria-label="Ссылка на поток"
+        placeholder="Ссылка на поток (m3u8)"
+        aria-label="Ссылка на поток (m3u8)"
       />
     </nav>
     <div class="container-fluid">

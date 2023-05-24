@@ -24,7 +24,7 @@
             <line x1="12" y1="20" x2="12" y2="4"></line>
             <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
-          Статистика 1
+          Текущая позиция проигрывания
         </a>
       </li>
       <li class="nav-item">
@@ -45,7 +45,7 @@
             <polyline points="2 17 12 22 22 17"></polyline>
             <polyline points="2 12 12 17 22 12"></polyline>
           </svg>
-          Статистика 2
+          Текущий размер буфера
         </a>
       </li>
     </ul>
