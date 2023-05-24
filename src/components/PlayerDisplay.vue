@@ -19,10 +19,12 @@
     <!--  -->
     <div class="row">
       <h2>Мета информация</h2>
-      <p>buffered = {{ buffered }}</p>
-      <p>played = {{ played }}</p>
+      <p v-if="buffered">buffered = {{ timeRangesToString(buffered) }}</p>
+      <p v-if="played">played = {{ timeRangesToString(played) }}</p>
       <p>currentPosition = {{ currentPosition }}</p>
-      <p>qualityLevels = {{ qualityLevels }}</p>
+      <p>totalLength = {{ totalLength }}</p>
+
+      <p>qualityLevels = {{ qualityLevels.length }}</p>
     </div>
     <!--  -->
   </div>
@@ -35,10 +37,13 @@ import Hls, { Level } from "hls.js";
 export default class PlayerDisplay extends Vue {
   hlsSource =
     "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8";
-  buffered = [];
-  played = [];
+  buffered: TimeRanges | null = null;
+  played: TimeRanges | null = null;
   currentPosition = 0;
+  totalLength = 0;
   qualityLevels: Level[] = [];
+  //
+  video: HTMLMediaElement | null = null;
   //
   mounted() {
     this.setupHlsConsumer();
@@ -51,21 +56,31 @@ export default class PlayerDisplay extends Vue {
     // https://github.com/video-dev/hls.js/blob/master/docs/API.md
 
     if (Hls.isSupported()) {
-      var video = this.$refs.video as HTMLMediaElement;
+      this.video = this.$refs.video as HTMLMediaElement;
       var hls = new Hls();
       hls.on(Hls.Events.MEDIA_ATTACHED, function () {
         // console.log("video and hls.js are now bound together !");
       });
 
-      hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+      hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
         console.log(
           `manifest loaded, found ${data.levels.length} quality level`
         );
         this.qualityLevels = data.levels;
         console.log(data);
       });
+      // BUFFER_APPENDED
+      hls.on(Hls.Events.BUFFER_APPENDED, (_event, _data) => {
+        if (this.video) {
+          this.buffered = this.video.buffered;
+          this.played = this.video.played;
+          this.currentPosition = this.video.currentTime;
+          //
+          this.totalLength = this.getVideoEnd(); // TODO: dont recalc
+        }
+      });
 
-      hls.on(Hls.Events.ERROR, function (event, data) {
+      hls.on(Hls.Events.ERROR, function (_event, data) {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.MEDIA_ERROR:
@@ -89,10 +104,32 @@ export default class PlayerDisplay extends Vue {
 
       hls.loadSource(this.hlsSource);
       // bind them together
-      if (video) {
-        hls.attachMedia(video);
+      if (this.video) {
+        hls.attachMedia(this.video);
       }
     }
+  }
+  timeRangesToString(range: TimeRanges): string {
+    let ret = "";
+    if (range) {
+      for (let i = 0; i < range.length; i++) {
+        ret += "[" + range.start(i) + ", " + range.end(i) + "]";
+        ret += " ";
+      }
+    }
+
+    return ret;
+  }
+  getVideoEnd() {
+    if (this.video) {
+      if (isFinite(this.video.duration)) {
+        return this.video.duration;
+      }
+      if (this.video.seekable.length) {
+        return this.video.seekable.end(this.video.seekable.length - 1);
+      }
+    }
+    return 0;
   }
 }
 </script>
