@@ -1,10 +1,20 @@
 <template>
-  <nav>
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
-  </nav>
+  <nav><router-link to="/">Home</router-link> |</nav>
   <router-view />
+  <VersionDisplay />
 </template>
+
+<script lang="ts">
+import { Options, Vue } from "vue-class-component";
+import VersionDisplay from "@/components/VersionDisplay.vue"; // @ is an alias to /src
+
+@Options({
+  components: {
+    VersionDisplay,
+  },
+})
+export default class HomeView extends Vue {}
+</script>
 
 <style lang="less">
 #app {
