@@ -13,18 +13,67 @@
       </div>
     </div>
     <!--  -->
+    <div class="row m-2 mx-1">
+      <input
+        class="form-control w-75"
+        type="text"
+        placeholder="Ссылка на поток (m3u8)"
+        aria-label="Ссылка на поток (m3u8)"
+        v-model="hlsSource"
+        @change="setupHlsConsumer()"
+      />
+    </div>
+    <!--  -->
     <div class="col">
       <video ref="video" class="video-height" controls></video>
     </div>
     <!--  -->
-    <div class="row">
+    <div class="row" ref="meta">
       <h2>Мета информация</h2>
       <p v-if="buffered">buffered = {{ timeRangesToString(buffered) }}</p>
+
+      <div class="row m-1 p-1 col-12 col-lg-8">
+        <div class="progress" style="height: 5px">
+          <div
+            v-for="(barChunk, index) in bufferedProgressBarChunks"
+            :key="index"
+            class="progress-bar"
+            :class="barChunk.isFilled ? 'bg-secondary' : 'bg-transparent'"
+            role="progressbar"
+            :style="`width: ${barChunk.end - barChunk.start}%`"
+            :aria-valuenow="barChunk.end - barChunk.start"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+      </div>
+
       <p v-if="played">played = {{ timeRangesToString(played) }}</p>
+      <div class="row m-1 p-1 col-12 col-lg-8">
+        <div class="progress" style="height: 5px">
+          <div
+            v-for="(barChunk, index) in playedProgressBarChunks"
+            :key="index"
+            class="progress-bar"
+            :class="barChunk.isFilled ? 'bg-secondary' : 'bg-transparent'"
+            role="progressbar"
+            :style="`width: ${barChunk.end - barChunk.start}%`"
+            :aria-valuenow="barChunk.end - barChunk.start"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+      </div>
       <p>currentPosition = {{ currentPosition }}</p>
       <p>totalLength = {{ totalLength }}</p>
 
       <p>qualityLevels = {{ qualityLevels.length }}</p>
+      <ul class="list-inline">
+        <li v-for="(qualityLevel, index) in qualityLevels" :key="index">
+          {{ qualityLevel._attrs[0]["RESOLUTION"] }}
+          {{ qualityLevel._attrs[0]["FRAME-RATE"] }}
+        </li>
+      </ul>
     </div>
     <!--  -->
   </div>
@@ -32,7 +81,19 @@
 
 <script lang="ts">
 import { Vue } from "vue-class-component";
-import Hls, { Level } from "hls.js";
+import Hls, { Level, ManifestParsedData } from "hls.js";
+
+class ProgressBarChunk {
+  isFilled: boolean;
+  start: number;
+  end: number;
+
+  constructor(isFilled: boolean, start: number, end: number) {
+    this.isFilled = isFilled;
+    this.start = start;
+    this.end = end;
+  }
+}
 
 export default class PlayerDisplay extends Vue {
   hlsSource =
@@ -44,9 +105,69 @@ export default class PlayerDisplay extends Vue {
   qualityLevels: Level[] = [];
   //
   video: HTMLMediaElement | null = null;
+  hls: Hls | null = null;
+  //
+  bufferedProgressBarChunks: ProgressBarChunk[] = [];
+  playedProgressBarChunks: ProgressBarChunk[] = [];
   //
   mounted() {
     this.setupHlsConsumer();
+  }
+  onManifestParsed(e: any, data: ManifestParsedData) {
+    console.log(`manifest loaded, found ${data.levels.length} quality level`);
+    this.qualityLevels = data.levels;
+    console.log(data);
+  }
+  onFragmentChanged() {
+    if (this.video) {
+      this.played = this.video.played;
+      this.playedProgressBarChunks = this.convertTimeRangesToBarChunks(
+        this.played
+      );
+      this.currentPosition = this.video.currentTime;
+    }
+  }
+  onFragmentBuffered() {
+    if (this.video) {
+      this.buffered = this.video.buffered;
+      this.bufferedProgressBarChunks = this.convertTimeRangesToBarChunks(
+        this.buffered
+      );
+      //
+      if (this.played) {
+        // additional tick
+        this.playedProgressBarChunks = this.convertTimeRangesToBarChunks(
+          this.played
+        );
+      }
+    }
+  }
+  onLevelLoaded() {
+    if (this.video) {
+      this.totalLength = this.getVideoEnd();
+    }
+  }
+
+  onHlsError(e: any, data: { fatal: any; type: any }) {
+    if (this.hls) {
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.log("fatal media error encountered, try to recover");
+            this.hls.recoverMediaError();
+            break;
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            console.error("fatal network error encountered", data);
+            break;
+          default:
+            // cannot recover
+
+            this.hls.destroy();
+
+            break;
+        }
+      }
+    }
   }
   setupHlsConsumer() {
     // list of events to listen
@@ -55,57 +176,26 @@ export default class PlayerDisplay extends Vue {
     // list of values to read from hls object itself
     // https://github.com/video-dev/hls.js/blob/master/docs/API.md
 
+    // also you can read from Html object itself
+
     if (Hls.isSupported()) {
       this.video = this.$refs.video as HTMLMediaElement;
-      var hls = new Hls();
-      hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-        // console.log("video and hls.js are now bound together !");
+      this.hls = new Hls();
+      this.hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+        return;
       });
+      // events link up
+      this.hls.on(Hls.Events.MANIFEST_PARSED, this.onManifestParsed);
+      this.hls.on(Hls.Events.FRAG_CHANGED, this.onFragmentChanged);
+      this.hls.on(Hls.Events.BUFFER_APPENDED, this.onFragmentBuffered);
+      this.hls.on(Hls.Events.LEVEL_LOADED, this.onLevelLoaded);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
-        console.log(
-          `manifest loaded, found ${data.levels.length} quality level`
-        );
-        this.qualityLevels = data.levels;
-        console.log(data);
-      });
-      // BUFFER_APPENDED
-      hls.on(Hls.Events.BUFFER_APPENDED, (_event, _data) => {
-        if (this.video) {
-          this.buffered = this.video.buffered;
-          this.played = this.video.played;
-          this.currentPosition = this.video.currentTime;
-          //
-          this.totalLength = this.getVideoEnd(); // TODO: dont recalc
-        }
-      });
+      this.hls.on(Hls.Events.ERROR, this.onHlsError);
 
-      hls.on(Hls.Events.ERROR, function (_event, data) {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log("fatal media error encountered, try to recover");
-              hls.recoverMediaError();
-              break;
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              console.error("fatal network error encountered", data);
-              // All retries and media options have been exhausted.
-              // Immediately trying to restart loading could cause loop loading.
-              // Consider modifying loading policies to best fit your asset and network
-              // conditions (manifestLoadPolicy, playlistLoadPolicy, fragLoadPolicy).
-              break;
-            default:
-              // cannot recover
-              hls.destroy();
-              break;
-          }
-        }
-      });
-
-      hls.loadSource(this.hlsSource);
+      this.hls.loadSource(this.hlsSource);
       // bind them together
       if (this.video) {
-        hls.attachMedia(this.video);
+        this.hls.attachMedia(this.video);
       }
     }
   }
@@ -130,6 +220,32 @@ export default class PlayerDisplay extends Vue {
       }
     }
     return 0;
+  }
+  convertTimeRangesToBarChunks(inputChunks: TimeRanges) {
+    let ret = [];
+    let secPercent = (1 / this.totalLength) * 100;
+    let lastBufferEnd = 0;
+
+    if (inputChunks) {
+      for (let i = 0; i < inputChunks.length; i++) {
+        // add empty bar
+        if (inputChunks.start(i) > lastBufferEnd) {
+          ret.push({
+            isFilled: false,
+            start: lastBufferEnd,
+            end: inputChunks.start(i) * secPercent,
+          });
+        }
+        // add normal bar
+        ret.push({
+          isFilled: true,
+          start: inputChunks.start(i) * secPercent,
+          end: inputChunks.end(i) * secPercent,
+        });
+        lastBufferEnd = inputChunks.end(i) * secPercent;
+      }
+    }
+    return ret;
   }
 }
 </script>
