@@ -4,13 +4,13 @@
       class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom"
     >
       <h1 class="h2">Видеопроигрыватель</h1>
-      <div class="btn-toolbar mb-2 mb-md-0">
+      <!-- <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group mr-2">
           <button class="btn btn-sm btn-outline-secondary">
             Экспорт служебной информации
           </button>
         </div>
-      </div>
+      </div> -->
     </div>
     <!--  -->
     <div class="row m-2 mx-1">
@@ -30,25 +30,29 @@
     <!--  -->
     <div class="row" ref="meta">
       <h2>Мета информация</h2>
-      <p v-if="buffered">buffered = {{ timeRangesToString(buffered) }}</p>
+      <div v-if="canSeeBuffered">
+        <p v-if="buffered">
+          Находится в буфере: {{ timeRangesToString(buffered) }}
+        </p>
 
-      <div class="row m-1 p-1 col-12 col-lg-8">
-        <div class="progress" style="height: 5px">
-          <div
-            v-for="(barChunk, index) in bufferedProgressBarChunks"
-            :key="index"
-            class="progress-bar"
-            :class="barChunk.isFilled ? 'bg-secondary' : 'bg-transparent'"
-            role="progressbar"
-            :style="`width: ${barChunk.end - barChunk.start}%`"
-            :aria-valuenow="barChunk.end - barChunk.start"
-            aria-valuemin="0"
-            aria-valuemax="100"
-          ></div>
+        <div class="row m-1 p-1 col-12 col-lg-8">
+          <div class="progress" style="height: 5px">
+            <div
+              v-for="(barChunk, index) in bufferedProgressBarChunks"
+              :key="index"
+              class="progress-bar"
+              :class="barChunk.isFilled ? 'bg-secondary' : 'bg-transparent'"
+              role="progressbar"
+              :style="`width: ${barChunk.end - barChunk.start}%`"
+              :aria-valuenow="barChunk.end - barChunk.start"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+          </div>
         </div>
       </div>
 
-      <p v-if="played">played = {{ timeRangesToString(played) }}</p>
+      <p v-if="played">Проиграно: {{ timeRangesToString(played) }}</p>
       <div class="row m-1 p-1 col-12 col-lg-8">
         <div class="progress" style="height: 5px">
           <div
@@ -64,16 +68,17 @@
           ></div>
         </div>
       </div>
-      <p>currentPosition = {{ currentPosition }}</p>
-      <p>totalLength = {{ totalLength }}</p>
-
-      <p>qualityLevels = {{ qualityLevels.length }}</p>
-      <ul class="list-inline">
-        <li v-for="(qualityLevel, index) in qualityLevels" :key="index">
-          {{ qualityLevel._attrs[0]["RESOLUTION"] }}
-          {{ qualityLevel._attrs[0]["FRAME-RATE"] }}
-        </li>
-      </ul>
+      <p>Тек. позиция: {{ ~~currentPosition }} сек.</p>
+      <p>Полная длина: {{ totalLength }} сек.</p>
+      <div v-if="canSeeQuality">
+        <p>Список доступных качеств: {{ qualityLevels.length }}</p>
+        <ul class="list-inline">
+          <li v-for="(qualityLevel, index) in qualityLevels" :key="index">
+            {{ qualityLevel._attrs[0]["RESOLUTION"] }}
+            {{ qualityLevel._attrs[0]["FRAME-RATE"] }}
+          </li>
+        </ul>
+      </div>
     </div>
     <!--  -->
   </div>
@@ -82,6 +87,7 @@
 <script lang="ts">
 import { Vue } from "vue-class-component";
 import Hls, { Level, ManifestParsedData } from "hls.js";
+import EventBus from "@/lib/EventBus";
 
 class ProgressBarChunk {
   isFilled: boolean;
@@ -110,8 +116,18 @@ export default class PlayerDisplay extends Vue {
   bufferedProgressBarChunks: ProgressBarChunk[] = [];
   playedProgressBarChunks: ProgressBarChunk[] = [];
   //
+  canSeeBuffered = false;
+  canSeeQuality = false;
+  //
   mounted() {
     this.setupHlsConsumer();
+    //
+    EventBus.on("toggle-current-buffer-size", () => {
+      this.canSeeBuffered = !this.canSeeBuffered;
+    });
+    EventBus.on("toggle-quality-list", () => {
+      this.canSeeQuality = !this.canSeeQuality;
+    });
   }
   onManifestParsed(e: any, data: ManifestParsedData) {
     console.log(`manifest loaded, found ${data.levels.length} quality level`);
