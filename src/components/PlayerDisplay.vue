@@ -4,13 +4,16 @@
       class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom"
     >
       <h1 class="h2">Видеопроигрыватель</h1>
-      <!-- <div class="btn-toolbar mb-2 mb-md-0">
+      <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group mr-2">
-          <button class="btn btn-sm btn-outline-secondary">
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            @click="exportMetaData"
+          >
             Экспорт служебной информации
           </button>
         </div>
-      </div> -->
+      </div>
     </div>
     <!--  -->
     <div class="row m-2 mx-1">
@@ -79,6 +82,7 @@
           </li>
         </ul>
       </div>
+      <p class="d-none visible-print">video JSON: {{ videoInfo }}</p>
     </div>
     <!--  -->
   </div>
@@ -88,6 +92,7 @@
 import { Vue } from "vue-class-component";
 import Hls, { Level, ManifestParsedData } from "hls.js";
 import EventBus from "@/lib/EventBus";
+import { Export2Word } from "@/lib/Export";
 
 class ProgressBarChunk {
   isFilled: boolean;
@@ -109,6 +114,7 @@ export default class PlayerDisplay extends Vue {
   currentPosition = 0;
   totalLength = 0;
   qualityLevels: Level[] = [];
+  videoInfo = "";
   //
   video: HTMLMediaElement | null = null;
   hls: Hls | null = null;
@@ -132,7 +138,9 @@ export default class PlayerDisplay extends Vue {
   onManifestParsed(e: any, data: ManifestParsedData) {
     console.log(`manifest loaded, found ${data.levels.length} quality level`);
     this.qualityLevels = data.levels;
-    console.log(data);
+
+    let tmpData = { ...data };
+    this.videoInfo = JSON.stringify(tmpData);
   }
   onFragmentChanged() {
     if (this.video) {
@@ -262,6 +270,10 @@ export default class PlayerDisplay extends Vue {
       }
     }
     return ret;
+  }
+
+  exportMetaData() {
+    Export2Word("", this.$refs.meta as HTMLElement, "meta-video-info.doc");
   }
 }
 </script>
