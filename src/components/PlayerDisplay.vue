@@ -28,22 +28,81 @@
     </div>
     <!--  -->
     <div class="col">
-      <video ref="video" class="video-height" controls></video>
-    </div>
-    <div class="row">
-      <button
-        type="button"
-        class="btn btn-primary col-1"
-        data-bs-toggle="button"
-        aria-pressed="false"
-        autocomplete="off"
-        @click="toggleStartVideo"
-      >
-        Play / Stop
-      </button>
-    </div>
-    <div class="col-8">
-      <input type="range" class="form-range" />
+      <figure ref="videoContainer">
+        <video
+          @timeupdate="onVideoUpdated()"
+          ref="video"
+          class="video-dark"
+          :class="{
+            'video-max': !restrictVideoSize,
+          }"
+        ></video>
+        <div
+          class="bg-opacity-50"
+          :class="{
+            'fixed-bottom': !restrictVideoSize,
+            'bg-dark': !restrictVideoSize,
+          }"
+        >
+          <div class="row m-1 p-1">
+            <button
+              @click="toggleStartVideo"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Play / pause
+            </button>
+            <button
+              @click="stopVideo"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Stop
+            </button>
+            <button
+              @click="toggleVideoMute"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Mute/Unmute
+            </button>
+            <button
+              @click="changeVolume(0.1)"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Vol+
+            </button>
+            <button
+              @click="changeVolume(-0.1)"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Vol-
+            </button>
+            <button
+              @click="toggleFullscreen"
+              type="button"
+              class="btn btn-outline-secondary col-1 m-1 p-0"
+            >
+              Fullscreen
+            </button>
+          </div>
+          <div class="row m-1 p-0">
+            <div :class="{ 'col-8': restrictVideoSize }">
+              <input
+                type="range"
+                v-model="currentPosition"
+                :max="totalLength"
+                class="form-range"
+                @change="playbackChanged()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!--  -->
+      </figure>
     </div>
     <!--  -->
     <div class="row" ref="meta">
@@ -107,6 +166,7 @@
 import { Vue } from "vue-class-component";
 import Hls, { Level, ManifestParsedData } from "hls.js";
 import EventBus from "@/lib/EventBus";
+import { clamp } from "@/lib/util";
 import { Export2Word } from "@/lib/Export";
 
 class ProgressBarChunk {
@@ -140,6 +200,10 @@ export default class PlayerDisplay extends Vue {
   canSeeBuffered = false;
   canSeeQuality = false;
   //
+  restrictVideoSize = true;
+  //
+  videoControlValue = 0;
+  //
   mounted() {
     this.setupHlsConsumer();
     //
@@ -149,7 +213,52 @@ export default class PlayerDisplay extends Vue {
     EventBus.on("toggle-quality-list", () => {
       this.canSeeQuality = !this.canSeeQuality;
     });
+    // add watcher for more smooth experience
+    this.$watch("currentPosition", this.playbackChanged);
+    // this.$watch("videoControlValue", this.syncCurrentPosition);
   }
+  //
+  playbackChanged() {
+    // TODO: bug, choppy playback doe to function echo
+    if (this.video) {
+      this.video.currentTime = this.currentPosition;
+    }
+  }
+  //
+  toggleFullscreen() {
+    if (document.fullscreenElement !== null) {
+      // The document is in fullscreen mode
+      document.exitFullscreen();
+      this.restrictVideoSize = true;
+    } else {
+      // The document is not in fullscreen mode
+      (this.$refs.videoContainer as HTMLElement).requestFullscreen();
+      this.restrictVideoSize = false;
+    }
+  }
+  //
+  changeVolume(volumeDelta: number) {
+    if (this.video) {
+      const currentVolume = ~~(this.video.volume * 10) / 10;
+
+      this.video.volume = clamp(this.video.volume + volumeDelta, 0, 1);
+      this.video.muted = currentVolume <= 0;
+    }
+  }
+  //
+  toggleVideoMute() {
+    if (this.video) {
+      this.video.muted = !this.video.muted;
+    }
+  }
+  //
+  stopVideo() {
+    if (this.video) {
+      this.video.pause();
+      this.video.currentTime = 0;
+    }
+  }
+  //
   isVideoPlaying() {
     let ret = false;
     if (this.video) {
@@ -171,6 +280,12 @@ export default class PlayerDisplay extends Vue {
       }
     }
   }
+  onVideoUpdated() {
+    if (this.video) {
+      this.currentPosition = this.video.currentTime;
+    }
+  }
+  //
   onManifestParsed(e: any, data: ManifestParsedData) {
     console.log(`manifest loaded, found ${data.levels.length} quality level`);
     this.qualityLevels = data.levels;
@@ -184,7 +299,6 @@ export default class PlayerDisplay extends Vue {
       this.playedProgressBarChunks = this.convertTimeRangesToBarChunks(
         this.played
       );
-      this.currentPosition = this.video.currentTime;
     }
   }
   onFragmentBuffered() {
@@ -317,5 +431,11 @@ export default class PlayerDisplay extends Vue {
 <style scoped lang="less">
 .video-height {
   height: 600px;
+}
+.video-container-height {
+  height: 700px;
+}
+.video-max {
+  height: 100%;
 }
 </style>
