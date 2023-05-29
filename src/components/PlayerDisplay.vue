@@ -30,6 +30,21 @@
     <div class="col">
       <video ref="video" class="video-height" controls></video>
     </div>
+    <div class="row">
+      <button
+        type="button"
+        class="btn btn-primary col-1"
+        data-bs-toggle="button"
+        aria-pressed="false"
+        autocomplete="off"
+        @click="toggleStartVideo"
+      >
+        Play / Stop
+      </button>
+    </div>
+    <div class="col-8">
+      <input type="range" class="form-range" />
+    </div>
     <!--  -->
     <div class="row" ref="meta">
       <h2>Мета информация</h2>
@@ -134,6 +149,27 @@ export default class PlayerDisplay extends Vue {
     EventBus.on("toggle-quality-list", () => {
       this.canSeeQuality = !this.canSeeQuality;
     });
+  }
+  isVideoPlaying() {
+    let ret = false;
+    if (this.video) {
+      ret = !!(
+        this.video.currentTime > 0 &&
+        !this.video.paused &&
+        !this.video.ended &&
+        this.video.readyState > 2
+      );
+    }
+    return ret;
+  }
+  toggleStartVideo() {
+    if (this.video) {
+      if (this.isVideoPlaying()) {
+        this.video.pause();
+      } else {
+        this.video.play();
+      }
+    }
   }
   onManifestParsed(e: any, data: ManifestParsedData) {
     console.log(`manifest loaded, found ${data.levels.length} quality level`);
