@@ -28,66 +28,80 @@
     </div>
     <!--  -->
     <div class="col">
-      <figure ref="videoContainer">
+      <figure ref="videoContainer" @fullscreenchange="onChangedFullscreen()">
         <video
           @timeupdate="onVideoUpdated()"
           ref="video"
-          class="video-dark"
+          class="video-dark video-height"
           :class="{
             'video-max': !restrictVideoSize,
           }"
         ></video>
         <div
-          class="bg-opacity-50"
           :class="{
             'fixed-bottom': !restrictVideoSize,
             'bg-dark': !restrictVideoSize,
+            'video-controlls': !restrictVideoSize,
           }"
         >
-          <div class="row m-1 p-1">
-            <button
-              @click="toggleStartVideo"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Play / pause
-            </button>
-            <button
-              @click="stopVideo"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Stop
-            </button>
-            <button
-              @click="toggleVideoMute"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Mute/Unmute
-            </button>
-            <button
-              @click="changeVolume(0.1)"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Vol+
-            </button>
-            <button
-              @click="changeVolume(-0.1)"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Vol-
-            </button>
-            <button
-              @click="toggleFullscreen"
-              type="button"
-              class="btn btn-outline-secondary col-1 m-1 p-0"
-            >
-              Fullscreen
-            </button>
+          <div class="col" :class="{ 'col-8': restrictVideoSize }">
+            <div class="row m-1 p-1">
+              <button
+                @click="toggleStartVideo"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Play / pause
+              </button>
+              <button
+                @click="stopVideo"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Stop
+              </button>
+              <div class="col"></div>
+              <button
+                @click="toggleVideoMute"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Mute / Unmute
+              </button>
+              <button
+                @click="changeVolume(0.1)"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Vol+
+              </button>
+              <button
+                @click="changeVolume(-0.1)"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Vol-
+              </button>
+              <button
+                @click="toggleFullscreen"
+                type="button"
+                class="btn btn-outline-secondary col-1 m-1 p-0"
+              >
+                Fullscreen
+              </button>
+              <div
+                class="col-1 m-1 p-0"
+                :class="{
+                  'text-light': !restrictVideoSize,
+                }"
+              >
+                {{ `${~~(currentPosition / 60)}`.padStart(2, "0") }}:{{
+                  `${~~(currentPosition % 60)}`.padStart(2, "0")
+                }}
+              </div>
+            </div>
           </div>
+
           <div class="row m-1 p-0">
             <div :class="{ 'col-8': restrictVideoSize }">
               <input
@@ -214,26 +228,27 @@ export default class PlayerDisplay extends Vue {
       this.canSeeQuality = !this.canSeeQuality;
     });
     // add watcher for more smooth experience
-    this.$watch("currentPosition", this.playbackChanged);
-    // this.$watch("videoControlValue", this.syncCurrentPosition);
+    // this.$watch("currentPosition", this.playbackChanged); // creates error with feedback loop and choppy video
   }
   //
   playbackChanged() {
-    // TODO: bug, choppy playback doe to function echo
     if (this.video) {
       this.video.currentTime = this.currentPosition;
     }
   }
   //
+  onChangedFullscreen() {
+    this.restrictVideoSize = !this.restrictVideoSize;
+  }
   toggleFullscreen() {
     if (document.fullscreenElement !== null) {
       // The document is in fullscreen mode
       document.exitFullscreen();
-      this.restrictVideoSize = true;
+      // this.restrictVideoSize = true;
     } else {
       // The document is not in fullscreen mode
       (this.$refs.videoContainer as HTMLElement).requestFullscreen();
-      this.restrictVideoSize = false;
+      // this.restrictVideoSize = false;
     }
   }
   //
@@ -433,9 +448,15 @@ export default class PlayerDisplay extends Vue {
   height: 600px;
 }
 .video-container-height {
-  height: 700px;
+  max-height: 700px;
 }
 .video-max {
   height: 100%;
+}
+.video-controlls {
+  opacity: 0.1;
+}
+.video-controlls:hover {
+  opacity: 1;
 }
 </style>
