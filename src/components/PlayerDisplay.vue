@@ -49,14 +49,14 @@
               <button
                 @click="toggleStartVideo"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Play / pause
               </button>
               <button
                 @click="stopVideo"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Stop
               </button>
@@ -64,28 +64,28 @@
               <button
                 @click="toggleVideoMute"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Mute / Unmute
               </button>
               <button
                 @click="changeVolume(0.1)"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Vol+
               </button>
               <button
                 @click="changeVolume(-0.1)"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Vol-
               </button>
               <button
                 @click="toggleFullscreen"
                 type="button"
-                class="btn btn-outline-secondary col-1 m-1 p-0"
+                class="btn btn-outline-secondary col m-1 p-1"
               >
                 Fullscreen
               </button>
